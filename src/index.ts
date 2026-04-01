@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { promisify } from "node:util";
 import { z } from "zod";
 
@@ -12,7 +13,18 @@ const execFileAsync = promisify(execFile);
 
 function resolveRemindctl(): string {
   if (process.env.REMINDCTL_PATH) return process.env.REMINDCTL_PATH;
-  // Default Homebrew location; PATH lookup handled by execFile
+
+  // MCP stdio servers often inherit a minimal PATH that excludes Homebrew.
+  // Check common install locations explicitly.
+  const candidates = [
+    "/opt/homebrew/bin/remindctl", // Apple Silicon
+    "/usr/local/bin/remindctl",   // Intel Mac
+  ];
+  for (const path of candidates) {
+    if (existsSync(path)) return path;
+  }
+
+  // Fall back to PATH lookup
   return "remindctl";
 }
 
@@ -21,6 +33,16 @@ const REMINDCTL = resolveRemindctl();
 // ---------------------------------------------------------------------------
 // Core helper: run remindctl with args, always JSON + no-input
 // ---------------------------------------------------------------------------
+
+interface ExecError {
+  stderr?: string;
+  stdout?: string;
+  message?: string;
+  code?: string;
+  killed?: boolean;
+  signal?: string;
+  exitCode?: number;
+}
 
 async function runRemindctl(args: string[]): Promise<string> {
   const fullArgs = [...args, "--json", "--no-input"];
@@ -31,9 +53,22 @@ async function runRemindctl(args: string[]): Promise<string> {
     });
     return stdout;
   } catch (err: unknown) {
-    const e = err as { stderr?: string; message?: string };
-    const msg = e.stderr?.trim() || e.message || "Unknown remindctl error";
-    throw new Error(`remindctl failed: ${msg}`);
+    const e = err as ExecError;
+    const parts: string[] = [];
+
+    if (e.killed) parts.push("process timed out (10s limit)");
+    else if (e.code === "ENOENT") parts.push(`binary not found: ${REMINDCTL}`);
+    else if (e.code === "EACCES") parts.push(`permission denied: ${REMINDCTL}`);
+    else if (e.stderr?.trim()) parts.push(e.stderr.trim());
+    else if (e.message) parts.push(e.message);
+    else parts.push("unknown error");
+
+    if (e.signal) parts.push(`signal: ${e.signal}`);
+    if (e.exitCode !== undefined && e.exitCode !== null) parts.push(`exit code: ${e.exitCode}`);
+
+    const error = new Error(`remindctl failed: ${parts.join("; ")}`) as Error & { code?: string };
+    error.code = e.code;
+    throw error;
   }
 }
 
@@ -41,8 +76,18 @@ function parseJson(raw: string): unknown {
   try {
     return JSON.parse(raw);
   } catch {
+    console.error(
+      `[remindctl-mcp] Warning: failed to parse JSON output. ` +
+      `Raw (first 200 chars): ${raw.slice(0, 200)}`
+    );
     return raw.trim();
   }
+}
+
+function errorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (typeof e === "string") return e;
+  return String(e);
 }
 
 function ok(data: unknown) {
@@ -95,14 +140,14 @@ Args:
   async ({ title, list, due, notes, priority }) => {
     try {
       const args = ["add", title];
-      if (list) args.push("--list", list);
-      if (due) args.push("--due", due);
-      if (notes) args.push("--notes", notes);
-      if (priority) args.push("--priority", priority);
+      if (list !== undefined) args.push("--list", list);
+      if (due !== undefined) args.push("--due", due);
+      if (notes !== undefined) args.push("--notes", notes);
+      if (priority !== undefined) args.push("--priority", priority);
       const raw = await runRemindctl(args);
       return ok(parseJson(raw));
     } catch (e: unknown) {
-      return fail((e as Error).message);
+      return fail(errorMessage(e));
     }
   }
 );
@@ -138,12 +183,12 @@ Args:
   async ({ filter, list }) => {
     try {
       const args = ["show"];
-      if (filter) args.push(filter);
-      if (list) args.push("--list", list);
+      if (filter !== undefined) args.push(filter);
+      if (list !== undefined) args.push("--list", list);
       const raw = await runRemindctl(args);
       return ok(parseJson(raw));
     } catch (e: unknown) {
-      return fail((e as Error).message);
+      return fail(errorMessage(e));
     }
   }
 );
@@ -172,11 +217,11 @@ Args:
   async ({ name }) => {
     try {
       const args = ["list"];
-      if (name) args.push(name);
+      if (name !== undefined) args.push(name);
       const raw = await runRemindctl(args);
       return ok(parseJson(raw));
     } catch (e: unknown) {
-      return fail((e as Error).message);
+      return fail(errorMessage(e));
     }
   }
 );
@@ -220,19 +265,24 @@ Args:
   },
   async ({ id, title, list, due, notes, priority, clear_due, complete, incomplete }) => {
     try {
+      const hasEdits = title !== undefined || list !== undefined || due !== undefined ||
+        notes !== undefined || priority !== undefined || clear_due || complete || incomplete;
+      if (!hasEdits) {
+        return fail("No edit fields provided. Specify at least one of: title, list, due, notes, priority, clear_due, complete, incomplete.");
+      }
       const args = ["edit", id];
-      if (title) args.push("--title", title);
-      if (list) args.push("--list", list);
-      if (due) args.push("--due", due);
-      if (notes) args.push("--notes", notes);
-      if (priority) args.push("--priority", priority);
+      if (title !== undefined) args.push("--title", title);
+      if (list !== undefined) args.push("--list", list);
+      if (due !== undefined) args.push("--due", due);
+      if (notes !== undefined) args.push("--notes", notes);
+      if (priority !== undefined) args.push("--priority", priority);
       if (clear_due) args.push("--clear-due");
       if (complete) args.push("--complete");
       if (incomplete) args.push("--incomplete");
       const raw = await runRemindctl(args);
       return ok(parseJson(raw));
     } catch (e: unknown) {
-      return fail((e as Error).message);
+      return fail(errorMessage(e));
     }
   }
 );
@@ -264,7 +314,7 @@ Args:
       const raw = await runRemindctl(args);
       return ok(parseJson(raw));
     } catch (e: unknown) {
-      return fail((e as Error).message);
+      return fail(errorMessage(e));
     }
   }
 );
@@ -296,7 +346,7 @@ Args:
       const raw = await runRemindctl(args);
       return ok(parseJson(raw));
     } catch (e: unknown) {
-      return fail((e as Error).message);
+      return fail(errorMessage(e));
     }
   }
 );
@@ -344,7 +394,7 @@ Args:
       const raw = await runRemindctl(args);
       return ok(parseJson(raw));
     } catch (e: unknown) {
-      return fail((e as Error).message);
+      return fail(errorMessage(e));
     }
   }
 );
@@ -354,20 +404,28 @@ Args:
 // ---------------------------------------------------------------------------
 
 async function main() {
-  // Check remindctl is available
+  // Check remindctl is available and authorized
   try {
     const raw = await runRemindctl(["status"]);
     const status = parseJson(raw) as { authorized?: boolean };
     if (!status.authorized) {
-      console.error("[remindctl-mcp] ⚠️  remindctl is not authorized. Run: remindctl authorize");
+      console.error(
+        "[remindctl-mcp] remindctl is not authorized to access Reminders. Run: remindctl authorize"
+      );
     }
-  } catch {
-    console.error(
-      "[remindctl-mcp] ⚠️  Could not find remindctl. Install: brew install steipete/tap/remindctl"
-    );
-    console.error(
-      "[remindctl-mcp]    Or set REMINDCTL_PATH env var to the binary location."
-    );
+  } catch (err: unknown) {
+    const e = err as Error & { code?: string };
+    if (e.code === "ENOENT" || e.message?.includes("binary not found")) {
+      console.error(
+        "[remindctl-mcp] Could not find remindctl binary. Install: brew install steipete/tap/remindctl"
+      );
+      console.error(
+        "[remindctl-mcp] Or set REMINDCTL_PATH env var to the binary location."
+      );
+    } else {
+      console.error(`[remindctl-mcp] Health check failed: ${errorMessage(err)}`);
+    }
+    console.error("[remindctl-mcp] Server starting in degraded mode. Tool calls may fail.");
   }
 
   const transport = new StdioServerTransport();
