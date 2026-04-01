@@ -4,8 +4,15 @@
   "description": "MCP server for Apple Reminders via remindctl CLI",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "remindctl-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && chmod 755 dist/index.js",
+    "prepublishOnly": "npm run build",
     "start": "node dist/index.js"
   },
   "dependencies": {
