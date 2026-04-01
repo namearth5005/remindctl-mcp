@@ -77,6 +77,14 @@ Then restart Claude Code.
 
 **Tools not showing in Claude Code** — Restart Claude Code after adding the MCP server config. Check `~/.claude/settings.local.json` for correct absolute path.
 
+**Using nvm?** MCP stdio servers don't load nvm. Use the full node path in your config:
+
+```json
+"command": "/opt/homebrew/bin/node"
+```
+
+Find yours with: `readlink -f $(which node)` or `ls /opt/homebrew/bin/node`.
+
 ## License
 
 MIT
