@@ -1,44 +1,35 @@
 # apple-reminders-mcp
 
-MCP server for Apple Reminders via [`remindctl`](https://github.com/steipete/remindctl) CLI. Say "remind me to deploy on Friday" and your iPhone buzzes.
+MCP server for Apple Reminders. Manage reminders with natural language from any MCP client.
 
-Works with **Claude Code**, **Codex**, **Cursor**, and any MCP-compatible client.
+## Prerequisites
 
-## Install
+macOS 14+ · Node.js 18+ · [remindctl](https://github.com/steipete/remindctl)
 
-### Claude Code (Plugin — recommended)
+```bash
+brew install steipete/tap/remindctl
+remindctl authorize
+```
 
+## Setup
+
+**Claude Code** (plugin):
 ```
 /plugin marketplace add namearth5005/namearth5005-plugins
 /plugin install apple-reminders-mcp@namearth5005-plugins
 ```
 
-Includes the `/reminders` interactive browser skill. Restart Claude Code after installing.
-
-### Claude Code (Manual)
-
+**Claude Code** (manual):
 ```bash
 claude mcp add --transport stdio apple-reminders -- npx -y apple-reminders-mcp
 ```
 
-### OpenAI Codex
-
+**Codex**:
 ```bash
 codex mcp add apple-reminders -- npx -y apple-reminders-mcp
 ```
 
-Or add to `~/.codex/config.toml`:
-
-```toml
-[mcp_servers.apple-reminders]
-command = "npx"
-args = ["-y", "apple-reminders-mcp"]
-```
-
-### Cursor / Windsurf / Other MCP Clients
-
-Add to your MCP config:
-
+**Cursor / Windsurf / Other**:
 ```json
 {
   "mcpServers": {
@@ -50,61 +41,34 @@ Add to your MCP config:
 }
 ```
 
-## Prerequisites
-
-- **macOS 14+**
-- **Node.js 18+**
-- **remindctl** installed and authorized:
-
-```bash
-brew install steipete/tap/remindctl
-remindctl authorize
-```
-
 ## Tools
 
 | Tool | Description |
 |------|-------------|
 | `add_reminder` | Add a reminder with optional due date, list, notes, priority |
-| `show_reminders` | Show reminders (today, tomorrow, week, overdue, upcoming, all) |
-| `list_reminder_lists` | List all reminder lists or show contents of a specific list |
+| `show_reminders` | Show reminders (today/tomorrow/week/overdue/upcoming/all) |
+| `list_reminder_lists` | List all reminder lists or show contents of one |
 | `edit_reminder` | Edit title, due date, notes, priority, or move to another list |
-| `complete_reminders` | Mark one or more reminders as complete |
-| `delete_reminders` | Permanently delete reminders |
-| `manage_reminder_list` | Create, rename, or delete reminder lists |
+| `complete_reminders` | Mark reminders as complete |
+| `delete_reminders` | Delete reminders |
+| `manage_reminder_list` | Create, rename, or delete lists |
 
-## Usage Examples
+## Examples
 
 ```
-"remind me to deploy the API on Friday at 3pm"
-"what's on my list for today?"
+"remind me to deploy on Friday at 3pm"
+"what's due today?"
 "mark the deploy reminder as done"
-"show me all overdue tasks"
-"create a new list called Sprint 12"
-"delete the test reminder"
+"create a list called Sprint 12"
 ```
-
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `REMINDCTL_PATH` | Custom path to remindctl binary (defaults to PATH lookup) |
 
 ## Troubleshooting
 
-**"remindctl is not authorized"** — Run `remindctl authorize` and grant Reminders access in System Settings.
+**"remindctl is not authorized"** — Run `remindctl authorize`.
 
-**"Could not find remindctl"** — Install via Homebrew: `brew install steipete/tap/remindctl`, or set `REMINDCTL_PATH`.
+**"Could not find remindctl"** — `brew install steipete/tap/remindctl`, or set `REMINDCTL_PATH` env var.
 
-**Tools not showing in Claude Code** — Restart Claude Code after adding the MCP server config. Check `~/.claude/settings.local.json` for correct absolute path.
-
-**Using nvm?** MCP stdio servers don't load nvm. Use the full node path in your config:
-
-```json
-"command": "/opt/homebrew/bin/node"
-```
-
-Find yours with: `readlink -f $(which node)` or `ls /opt/homebrew/bin/node`.
+**Using nvm?** Use the full node path: `/opt/homebrew/bin/node` instead of `node`.
 
 ## License
 
