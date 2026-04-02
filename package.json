@@ -1,11 +1,11 @@
 {
-  "name": "remindctl-mcp",
+  "name": "apple-reminders-mcp",
   "version": "1.0.0",
   "description": "MCP server for Apple Reminders via remindctl CLI",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "remindctl-mcp": "dist/index.js"
+    "apple-reminders-mcp": "dist/index.js"
   },
   "files": [
     "dist"
