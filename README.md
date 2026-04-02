@@ -1,6 +1,23 @@
-# remindctl-mcp
+# apple-reminders-mcp
 
-MCP server for Apple Reminders via [`remindctl`](https://github.com/nicklama/remindctl) CLI. Say "remind me to deploy on Friday" in Claude Code and your iPhone buzzes.
+MCP server for Apple Reminders via [`remindctl`](https://github.com/steipete/remindctl) CLI. Say "remind me to deploy on Friday" in Claude Code and your iPhone buzzes.
+
+## Install (Recommended: Plugin)
+
+```
+/plugin marketplace add namearth5005/namearth5005-plugins
+/plugin install apple-reminders-mcp@namearth5005-plugins
+```
+
+This gives you the MCP tools + the interactive `/reminders` browser. Restart Claude Code after installing.
+
+## Install (Manual: npx)
+
+If you prefer not to use the plugin:
+
+```bash
+claude mcp add --transport stdio apple-reminders-mcp -- npx -y apple-reminders-mcp
+```
 
 ## Prerequisites
 
@@ -12,33 +29,6 @@ MCP server for Apple Reminders via [`remindctl`](https://github.com/nicklama/rem
 brew install steipete/tap/remindctl
 remindctl authorize
 ```
-
-## Install
-
-```bash
-git clone https://github.com/namearth5005/remindctl-mcp.git
-cd remindctl-mcp
-npm install
-npm run build
-```
-
-## Claude Code Configuration
-
-Add to `~/.claude/settings.local.json`:
-
-```json
-{
-  "mcpServers": {
-    "apple-reminders": {
-      "command": "node",
-      "args": ["/absolute/path/to/remindctl-mcp/dist/index.js"],
-      "type": "stdio"
-    }
-  }
-}
-```
-
-Then restart Claude Code.
 
 ## Tools
 
