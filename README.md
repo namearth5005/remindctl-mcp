@@ -1,22 +1,53 @@
 # apple-reminders-mcp
 
-MCP server for Apple Reminders via [`remindctl`](https://github.com/steipete/remindctl) CLI. Say "remind me to deploy on Friday" in Claude Code and your iPhone buzzes.
+MCP server for Apple Reminders via [`remindctl`](https://github.com/steipete/remindctl) CLI. Say "remind me to deploy on Friday" and your iPhone buzzes.
 
-## Install (Recommended: Plugin)
+Works with **Claude Code**, **Codex**, **Cursor**, and any MCP-compatible client.
+
+## Install
+
+### Claude Code (Plugin — recommended)
 
 ```
 /plugin marketplace add namearth5005/namearth5005-plugins
 /plugin install apple-reminders-mcp@namearth5005-plugins
 ```
 
-This gives you the MCP tools + the interactive `/reminders` browser. Restart Claude Code after installing.
+Includes the `/reminders` interactive browser skill. Restart Claude Code after installing.
 
-## Install (Manual: npx)
-
-If you prefer not to use the plugin:
+### Claude Code (Manual)
 
 ```bash
-claude mcp add --transport stdio apple-reminders-mcp -- npx -y apple-reminders-mcp
+claude mcp add --transport stdio apple-reminders -- npx -y apple-reminders-mcp
+```
+
+### OpenAI Codex
+
+```bash
+codex mcp add apple-reminders -- npx -y apple-reminders-mcp
+```
+
+Or add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.apple-reminders]
+command = "npx"
+args = ["-y", "apple-reminders-mcp"]
+```
+
+### Cursor / Windsurf / Other MCP Clients
+
+Add to your MCP config:
+
+```json
+{
+  "mcpServers": {
+    "apple-reminders": {
+      "command": "npx",
+      "args": ["-y", "apple-reminders-mcp"]
+    }
+  }
+}
 ```
 
 ## Prerequisites
